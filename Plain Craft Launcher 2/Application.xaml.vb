@@ -17,6 +17,8 @@ Public Class Application
 #End If
 
     Public Sub New()
+        Basics.VersionName = VersionBaseName
+        Basics.VersionCode = VersionCode
         '注册生命周期事件
         Lifecycle.When(LifecycleState.Loaded, AddressOf Application_Startup)
     End Sub
@@ -24,6 +26,7 @@ Public Class Application
     '开始
     Private Sub Application_Startup() '(sender As Object, e As StartupEventArgs) Handles Me.Startup
         Try
+            HandleMsgBoxForCore()
             '创建自定义跟踪监听器，用于检测是否存在 Binding 失败
             PresentationTraceSources.DataBindingSource.Listeners.Add(New BindingErrorTraceListener())
             PresentationTraceSources.DataBindingSource.Switch.Level = SourceLevels.Error
@@ -250,6 +253,25 @@ WaitRetry:
     End Sub
     Private Sub TooltipUnloaded(sender As Border, e As RoutedEventArgs)
         ShowingTooltips.Remove(sender)
+    End Sub
+
+
+    ' 弹窗 Core 对接
+    Private Sub HandleMsgBoxForCore()
+        AddHandler Core.UI.MsgBoxWrapper.OnShow, Sub(message As String, caption As String, buttons As ICollection(Of Core.UI.MsgBoxButtonInfo), theme As Core.UI.MsgBoxTheme, block As Boolean, ByRef result As Integer)
+                                                     Dim isWarn = theme.Equals(Core.UI.MsgBoxTheme.Error) OrElse theme.Equals(Core.UI.MsgBoxTheme.Warning)
+                                                     Dim ret = MyMsgBox(
+                                                    message,
+                                                    caption,
+                                                    If(buttons.ElementAtOrDefault(0)?.Context, String.Empty),
+                                                    If(buttons.ElementAtOrDefault(1)?.Context, String.Empty),
+                                                    If(buttons.ElementAtOrDefault(2)?.Context, String.Empty),
+                                                    isWarn, True, block,
+                                                    buttons.ElementAtOrDefault(0)?.OnClick,
+                                                    buttons.ElementAtOrDefault(1)?.OnClick,
+                                                    buttons.ElementAtOrDefault(2)?.OnClick)
+                                                     result = buttons.ElementAt(ret - 1).Value
+                                                 End Sub
     End Sub
 
     ' 自定义监听器类
